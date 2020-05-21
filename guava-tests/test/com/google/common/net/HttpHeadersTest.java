@@ -37,6 +37,7 @@ public class HttpHeadersTest extends TestCase {
     // Special case some of the weird HTTP Header names...
     ImmutableBiMap<String, String> specialCases =
         ImmutableBiMap.<String, String>builder()
+            .put("CDN_LOOP", "CDN-Loop")
             .put("ETAG", "ETag")
             .put("SOURCE_MAP", "SourceMap")
             .put("SEC_WEBSOCKET_ACCEPT", "Sec-WebSocket-Accept")
@@ -49,7 +50,8 @@ public class HttpHeadersTest extends TestCase {
             .build();
     ImmutableSet<String> uppercaseAcronyms =
         ImmutableSet.of(
-            "ID", "DNT", "DNS", "HTTP2", "IP", "MD5", "P3P", "TE", "UID", "URL", "WWW", "XSS");
+            "CH", "ID", "DNT", "DNS", "HTTP2", "IP", "MD5", "P3P", "TE", "UA", "UID", "URL", "WWW",
+            "XSS");
     assertConstantNameMatchesString(HttpHeaders.class, specialCases, uppercaseAcronyms);
   }
 
