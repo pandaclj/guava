@@ -49,11 +49,14 @@ public class RateLimiterTest extends TestCase {
   private final FakeStopwatch stopwatch = new FakeStopwatch();
 
   public void testSimple() {
-    RateLimiter limiter = RateLimiter.create(5.0, stopwatch);
-    limiter.acquire(); // R0.00, since it's the first request
-    limiter.acquire(); // R0.20
-    limiter.acquire(); // R0.20
-    assertEvents("R0.00", "R0.20", "R0.20");
+    stopwatch.setInstant(1000*1000*1000L);
+    RateLimiter limiter = RateLimiter.create(2.0, stopwatch); //1s中产生5个令牌
+    limiter.acquire(2); // R0.00, since it's the first request
+    stopwatch.setInstant(2500*1000*1000L);
+    limiter.acquire(4); // R0.20
+    stopwatch.setInstant(3000*1000*1000L);
+    limiter.acquire(2); // R0.20
+//    assertEvents("R0.00", "R0.20", "R0.20");
   }
 
   public void testImmediateTryAcquire() {
@@ -183,6 +186,9 @@ public class RateLimiterTest extends TestCase {
     }
   }
 
+  /**
+   * 测试预热
+   */
   @AndroidIncompatible // difference in String.format rounding?
   public void testWarmUp() {
     RateLimiter limiter = RateLimiter.create(2.0, 4000, MILLISECONDS, 3.0, stopwatch);
@@ -531,6 +537,10 @@ public class RateLimiterTest extends TestCase {
     long instant = 0L;
     final List<String> events = Lists.newArrayList();
 
+    public void setInstant(long instant) {
+      this.instant = instant;
+    }
+
     @Override
     public long readMicros() {
       return NANOSECONDS.toMicros(instant);
@@ -541,7 +551,7 @@ public class RateLimiterTest extends TestCase {
     }
 
     void sleepMicros(String caption, long micros) {
-      instant += MICROSECONDS.toNanos(micros);
+//      instant += MICROSECONDS.toNanos(micros);
       events.add(caption + String.format(Locale.ROOT, "%3.2f", (micros / 1000000.0)));
     }
 

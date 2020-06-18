@@ -207,7 +207,7 @@ abstract class SmoothRateLimiter extends RateLimiter {
      * The slope of the line from the stable interval (when permits == 0), to the cold interval
      * (when permits == maxPermits)
      */
-    private double slope;
+    private double slope; //斜率
 
     private double thresholdPermits;
     private double coldFactor;
@@ -222,10 +222,14 @@ abstract class SmoothRateLimiter extends RateLimiter {
     @Override
     void doSetRate(double permitsPerSecond, double stableIntervalMicros) {
       double oldMaxPermits = maxPermits;
+      //计算每个间隔内的平均冷却时间，coldFactor默认为3
       double coldIntervalMicros = stableIntervalMicros * coldFactor;
+      //由梯形面积为长方形面积的2倍推导
       thresholdPermits = 0.5 * warmupPeriodMicros / stableIntervalMicros;
+      //由梯形面积计算公式推导
       maxPermits =
           thresholdPermits + 2.0 * warmupPeriodMicros / (stableIntervalMicros + coldIntervalMicros);
+      //计算出倾斜率
       slope = (coldIntervalMicros - stableIntervalMicros) / (maxPermits - thresholdPermits);
       if (oldMaxPermits == Double.POSITIVE_INFINITY) {
         // if we don't special-case this, we would get storedPermits == NaN, below
@@ -238,14 +242,28 @@ abstract class SmoothRateLimiter extends RateLimiter {
       }
     }
 
+
+    /**
+     * maxPermits=6
+     * thresholdPermits=3
+     * storedPermits=5
+     * permitsToTake = 1
+     *
+     * @param storedPermits
+     * @param permitsToTake
+     * @return
+     */
     @Override
     long storedPermitsToWaitTime(double storedPermits, double permitsToTake) {
-      double availablePermitsAboveThreshold = storedPermits - thresholdPermits;
+      //5-3=2
+      double availablePermitsAboveThreshold = storedPermits - thresholdPermits; //计算超过阈值的令牌数
       long micros = 0;
       // measuring the integral on the right part of the function (the climbing line)
-      if (availablePermitsAboveThreshold > 0.0) {
+      if (availablePermitsAboveThreshold > 0.0) { //如果剩余令牌数超过阈值
+        //需要消耗超过阈值的令牌=1
         double permitsAboveThresholdToTake = min(availablePermitsAboveThreshold, permitsToTake);
         // TODO(cpovirk): Figure out a good name for this variable.
+        //计算梯形部分面积
         double length =
             permitsToTime(availablePermitsAboveThreshold)
                 + permitsToTime(availablePermitsAboveThreshold - permitsAboveThresholdToTake);
@@ -253,6 +271,7 @@ abstract class SmoothRateLimiter extends RateLimiter {
         permitsToTake -= permitsAboveThresholdToTake;
       }
       // measuring the integral on the left part of the function (the horizontal line)
+      //加上长方形的面积
       micros += (long) (stableIntervalMicros * permitsToTake);
       return micros;
     }
@@ -285,11 +304,13 @@ abstract class SmoothRateLimiter extends RateLimiter {
     @Override
     void doSetRate(double permitsPerSecond, double stableIntervalMicros) {
       double oldMaxPermits = this.maxPermits;
+      //计算最大令牌数
       maxPermits = maxBurstSeconds * permitsPerSecond;
       if (oldMaxPermits == Double.POSITIVE_INFINITY) {
         // if we don't special-case this, we would get storedPermits == NaN, below
         storedPermits = maxPermits;
       } else {
+        //等比例缩放，速率可能调整
         storedPermits =
             (oldMaxPermits == 0.0)
                 ? 0.0 // initial state
@@ -308,21 +329,30 @@ abstract class SmoothRateLimiter extends RateLimiter {
     }
   }
 
-  /** The currently stored permits. */
+  /**
+   * The currently stored permits.
+   * 剩余的令牌数
+   * */
   double storedPermits;
 
-  /** The maximum number of stored permits. */
+  /**
+   * The maximum number of stored permits.
+   * 桶中最多能存放多少个令牌，=maxBurstSeconds*每秒生成令牌个数
+   * */
   double maxPermits;
 
   /**
    * The interval between two unit requests, at our stable rate. E.g., a stable rate of 5 permits
    * per second has a stable interval of 200ms.
+   *
+   * 加入令牌的平均间隔，单位为微秒，如果加入令牌速度为每秒5个，则该值为1000*1000/5
    */
   double stableIntervalMicros;
 
   /**
    * The time when the next request (no matter its size) will be granted. After granting a request,
    * this is pushed further in the future. Large requests push this further than small requests.
+   * 下一个请求需要等待的时间(令牌数目会不够)
    */
   private long nextFreeTicketMicros = 0L; // could be either in the past or future
 
@@ -332,8 +362,11 @@ abstract class SmoothRateLimiter extends RateLimiter {
 
   @Override
   final void doSetRate(double permitsPerSecond, long nowMicros) {
+    //计算storedPermits和nextFreeTicketMicros
     resync(nowMicros);
+    //微妙，计算出每个间隔（微秒）内允许获取的令牌
     double stableIntervalMicros = SECONDS.toMicros(1L) / permitsPerSecond;
+    //设置令牌生成间隔时间
     this.stableIntervalMicros = stableIntervalMicros;
     doSetRate(permitsPerSecond, stableIntervalMicros);
   }
@@ -352,16 +385,26 @@ abstract class SmoothRateLimiter extends RateLimiter {
 
   @Override
   final long reserveEarliestAvailable(int requiredPermits, long nowMicros) {
-    resync(nowMicros);
+    /**
+     * 如果当前时间大于下一次需要等待的额时间，则计算这个时间差，并计算出这个时间间隔内能产生的令牌数
+     * 计算剩余令牌数(有上限)
+     * 设置下一次需要等待的时间为nowMicros
+     */
+    resync(nowMicros); //计算storedPermits和nextFreeTicketMicros
     long returnValue = nextFreeTicketMicros;
+    //计算可以消费的令牌数
     double storedPermitsToSpend = min(requiredPermits, this.storedPermits);
+    //计算还需要的令牌数
     double freshPermits = requiredPermits - storedPermitsToSpend;
+    //计算需要等待的时间(等待令牌产生)
     long waitMicros =
         storedPermitsToWaitTime(this.storedPermits, storedPermitsToSpend)
             + (long) (freshPermits * stableIntervalMicros);
-
+    //计算下一个可获取令牌的时间点
     this.nextFreeTicketMicros = LongMath.saturatedAdd(nextFreeTicketMicros, waitMicros);
+    //消费令牌
     this.storedPermits -= storedPermitsToSpend;
+    //返回下一次需要等待的时间
     return returnValue;
   }
 
@@ -382,9 +425,9 @@ abstract class SmoothRateLimiter extends RateLimiter {
   /** Updates {@code storedPermits} and {@code nextFreeTicketMicros} based on the current time. */
   void resync(long nowMicros) {
     // if nextFreeTicket is in the past, resync to now
-    if (nowMicros > nextFreeTicketMicros) {
-      double newPermits = (nowMicros - nextFreeTicketMicros) / coolDownIntervalMicros();
-      storedPermits = min(maxPermits, storedPermits + newPermits);
+    if (nowMicros > nextFreeTicketMicros) { //如果当前时间大于 下一次请求需要等待的时间
+      double newPermits = (nowMicros - nextFreeTicketMicros) / coolDownIntervalMicros(); //计算出这段时间可产生的令牌数
+      storedPermits = min(maxPermits, storedPermits + newPermits); //计算剩余的令牌数，最大是maxPermits
       nextFreeTicketMicros = nowMicros;
     }
   }

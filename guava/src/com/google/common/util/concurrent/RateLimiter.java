@@ -130,7 +130,7 @@ public abstract class RateLimiter {
 
   @VisibleForTesting
   static RateLimiter create(double permitsPerSecond, SleepingStopwatch stopwatch) {
-    RateLimiter rateLimiter = new SmoothBursty(stopwatch, 1.0 /* maxBurstSeconds */);
+    RateLimiter rateLimiter = new SmoothBursty(stopwatch, 1.0 /* maxBurstSeconds */); //maxBurstSeconds用来表示时间周期，比如允许设置30s内通过20
     rateLimiter.setRate(permitsPerSecond);
     return rateLimiter;
   }
@@ -283,7 +283,7 @@ public abstract class RateLimiter {
    */
   final long reserve(int permits) {
     checkPermits(permits);
-    synchronized (mutex()) {
+    synchronized (mutex()) { //加锁
       return reserveAndGetWaitLength(permits, stopwatch.readMicros());
     }
   }
@@ -348,6 +348,7 @@ public abstract class RateLimiter {
     long microsToWait;
     synchronized (mutex()) {
       long nowMicros = stopwatch.readMicros();
+      //如果 可获取许可的时间+timeoutMicros <= 当前时间
       if (!canAcquire(nowMicros, timeoutMicros)) {
         return false;
       } else {

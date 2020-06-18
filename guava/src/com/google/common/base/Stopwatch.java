@@ -82,10 +82,10 @@ import java.util.concurrent.TimeUnit;
 @GwtCompatible(emulated = true)
 @SuppressWarnings("GoodTime") // lots of violations
 public final class Stopwatch {
-  private final Ticker ticker;
-  private boolean isRunning;
+  private final Ticker ticker; //时钟
+  private boolean isRunning; //是否启动
   private long elapsedNanos;
-  private long startTick;
+  private long startTick; //开始时间
 
   /**
    * Creates (but does not start) a new stopwatch using {@link System#nanoTime} as its time source.
@@ -149,7 +149,7 @@ public final class Stopwatch {
   public Stopwatch start() {
     checkState(!isRunning, "This stopwatch is already running.");
     isRunning = true;
-    startTick = ticker.read();
+    startTick = ticker.read(); //System.nanoTime()
     return this;
   }
 
