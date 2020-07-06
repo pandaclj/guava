@@ -161,7 +161,7 @@ final class SubscriberRegistry {
   private Multimap<Class<?>, Subscriber> findAllSubscribers(Object listener) {
     Multimap<Class<?>, Subscriber> methodsInListener = HashMultimap.create();
     Class<?> clazz = listener.getClass();
-    for (Method method : getAnnotatedMethods(clazz)) {
+    for (Method method : getAnnotatedMethods(clazz)) { //寻找带"Subscribe"注解的方法
       Class<?>[] parameterTypes = method.getParameterTypes();
       Class<?> eventType = parameterTypes[0];
       methodsInListener.put(eventType, Subscriber.create(bus, listener, method));
@@ -173,6 +173,11 @@ final class SubscriberRegistry {
     return subscriberMethodsCache.getUnchecked(clazz);
   }
 
+  /**
+   * 寻找被Subscribe注解的方法
+   * @param clazz
+   * @return
+   */
   private static ImmutableList<Method> getAnnotatedMethodsNotCached(Class<?> clazz) {
     Set<? extends Class<?>> supertypes = TypeToken.of(clazz).getTypes().rawTypes();
     Map<MethodIdentifier, Method> identifiers = Maps.newHashMap();

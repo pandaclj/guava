@@ -99,10 +99,10 @@ public class EventBus {
 
   private final String identifier;
   private final Executor executor;
-  private final SubscriberExceptionHandler exceptionHandler;
+  private final SubscriberExceptionHandler exceptionHandler; //异常处理回调钩子
 
-  private final SubscriberRegistry subscribers = new SubscriberRegistry(this);
-  private final Dispatcher dispatcher;
+  private final SubscriberRegistry subscribers = new SubscriberRegistry(this); //订阅者注册中心
+  private final Dispatcher dispatcher; //分发层
 
   /** Creates a new EventBus named "default". */
   public EventBus() {

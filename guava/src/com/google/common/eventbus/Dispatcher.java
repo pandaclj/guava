@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  * @author Colin Decker
  */
-abstract class Dispatcher {
+abstract class Dispatcher { //事件分发中心
 
   /**
    * Returns a dispatcher that queues events that are posted reentrantly on a thread that is already

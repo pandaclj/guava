@@ -66,8 +66,8 @@ public final class HashMultimap<K, V> extends HashMultimapGwtSerializationDepend
    * <p>This method will soon be deprecated in favor of {@code
    * MultimapBuilder.hashKeys(expectedKeys).hashSetValues(expectedValuesPerKey).build()}.
    *
-   * @param expectedKeys the expected number of distinct keys
-   * @param expectedValuesPerKey the expected average number of values per key
+   * @param expectedKeys the expected number of distinct keys （map的初始化大小）
+   * @param expectedValuesPerKey the expected average number of values per key （set的初始化大小）
    * @throws IllegalArgumentException if {@code expectedKeys} or {@code expectedValuesPerKey} is
    *     negative
    */
